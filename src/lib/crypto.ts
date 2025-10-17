@@ -1,3 +1,26 @@
+/**
+ * AES-GCM + PBKDF2 via Web Crypto (browser).
+ * Självbeskrivande paket → lätt att byta backend senare.
+ */
+
+export type CryptoPacket = {
+  header: {
+    v: 1;
+    algo: "AES-GCM";
+    kdf: "PBKDF2";
+    iterations: number;
+    salt: string; // base64
+    iv: string;   // base64 (12 bytes)
+  };
+  ciphertext: string; // base64
+};
+
+// Text-kodare/avkodare
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+/* -------------------- Publikt API -------------------- */
+
 export async function encryptString(
   plainText: string,
   passphrase: string,
@@ -11,7 +34,7 @@ export async function encryptString(
   const ct = await subtle().encrypt(
     { name: "AES-GCM", iv },
     key,
-    data.buffer as ArrayBuffer // ✅ cast till ArrayBuffer
+    data.buffer as ArrayBuffer // explicit ArrayBuffer
   );
 
   return {
@@ -28,6 +51,9 @@ export async function encryptString(
 }
 
 export async function decryptString(packet: CryptoPacket, passphrase: string): Promise<string> {
+  if (packet.header.algo !== "AES-GCM" || packet.header.kdf !== "PBKDF2") {
+    throw new Error("Stöds ej: fel algo/kdf i paket.");
+  }
   const salt = b64.toBytes(packet.header.salt);
   const iv = b64.toBytes(packet.header.iv);
   const key = await deriveKey(passphrase, salt, packet.header.iterations);
@@ -36,10 +62,21 @@ export async function decryptString(packet: CryptoPacket, passphrase: string): P
   const pt = await subtle().decrypt(
     { name: "AES-GCM", iv },
     key,
-    ct.buffer as ArrayBuffer // ✅ cast här också
+    ct.buffer as ArrayBuffer
   );
   return dec.decode(pt);
 }
+
+export async function verifyPassphrase(packet: CryptoPacket, passphrase: string) {
+  try {
+    await decryptString(packet, passphrase);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* -------------------- Interna helpers -------------------- */
 
 async function deriveKey(passphrase: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
   const keyMaterial = await subtle().importKey(
@@ -53,7 +90,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array, iterations: numbe
   return subtle().deriveKey(
     {
       name: "PBKDF2",
-      salt: salt.buffer as ArrayBuffer, // ✅ cast igen
+      salt: salt.buffer as ArrayBuffer,
       iterations,
       hash: "SHA-256",
     },
@@ -63,3 +100,32 @@ async function deriveKey(passphrase: string, salt: Uint8Array, iterations: numbe
     ["encrypt", "decrypt"]
   );
 }
+
+function subtle(): SubtleCrypto {
+  const api = globalThis?.crypto?.subtle;
+  if (!api) throw new Error("Web Crypto API saknas (crypto.subtle).");
+  return api;
+}
+
+function randBytes(n: number): Uint8Array {
+  const a = new Uint8Array(n);
+  if (!globalThis.crypto?.getRandomValues) throw new Error("Saknar crypto.getRandomValues.");
+  globalThis.crypto.getRandomValues(a);
+  return a;
+}
+
+/* -------------------- Base64 helpers -------------------- */
+
+const b64 = {
+  fromBytes(bytes: Uint8Array): string {
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return globalThis.btoa(s);
+  },
+  toBytes(str: string): Uint8Array {
+    const bin = globalThis.atob(str);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  },
+};
