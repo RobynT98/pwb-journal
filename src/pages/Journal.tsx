@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePages } from "@/hooks/usePages";
+import ToolbarJournal from "@/components/ToolbarJournal"; // ⟵ 1. IMPORTERA DEN SNYGGA TOOLBAREN
 
 /** -----------------------------
- *  Blocktyper (för fria editorn)
- *  ----------------------------- */
+ * Blocktyper (för fria editorn)
+ * ----------------------------- */
 type BlockType = "h1" | "paragraph" | "quote" | "checklist" | "divider" | "image" | "sketch";
 
 type BaseBlock = { id: string; type: BlockType };
@@ -42,8 +43,8 @@ function newBlock(t: BlockType): Block {
 }
 
 /** =============================
- *  Journal – lagrad fri editor
- *  ============================= */
+ * Journal – lagrad fri editor
+ * ============================= */
 export default function Journal() {
   const { pages, create, update, exportOne, importOneFromText } = usePages("journal");
 
@@ -230,7 +231,9 @@ export default function Journal() {
 
       {/* Editor */}
       <section className="card-paper p-2 md:p-4 lift">
-        <Toolbar onAdd={(t) => addBlock(t)} />
+        {/* ⟵ 2. ANVÄND DEN SNYGGA TOOLBAREN HÄR */}
+        <ToolbarJournal onAdd={(t) => addBlock(t)} />
+        
         <div className="divider my-4" />
         <div className="space-y-4">
           {blocks.map((b) => (
@@ -250,29 +253,11 @@ export default function Journal() {
   );
 }
 
-/** -----------------------------
- *  Toolbar – lägg till block
- *  ----------------------------- */
-function Toolbar({ onAdd }: { onAdd: (t: BlockType) => void }) {
-  const Btn = (p: { label: string; onClick: () => void }) => (
-    <button className="btn-outline" onClick={p.onClick}>{p.label}</button>
-  );
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Btn label="Rubrik" onClick={() => onAdd("h1")} />
-      <Btn label="Stycke" onClick={() => onAdd("paragraph")} />
-      <Btn label="Citat" onClick={() => onAdd("quote")} />
-      <Btn label="Checklista" onClick={() => onAdd("checklist")} />
-      <Btn label="Avdelare" onClick={() => onAdd("divider")} />
-      <Btn label="Bild" onClick={() => onAdd("image")} />
-      <Btn label="Skiss" onClick={() => onAdd("sketch")} />
-    </div>
-  );
-}
+// ⟵ 3. HELA DEN GAMLA "function Toolbar(...)" ÄR NU BORTTAGEN
 
 /** -----------------------------
- *  BlockView – rendera/reda block
- *  ----------------------------- */
+ * BlockView – rendera/reda block
+ * ----------------------------- */
 function BlockView({
   block, onChange, onAddBelow, onRemove, onMoveUp, onMoveDown,
 }: {
