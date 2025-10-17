@@ -11,6 +11,7 @@ import Minne from "@/pages/Minne";
 import Bearbetning from "@/pages/Bearbetning";
 import Journal from "@/pages/Journal";
 import Settings from "@/pages/Settings";
+import ImportExport from "@/pages/ImportExport";
 import NotFound from "@/pages/NotFound";
 
 const router = createBrowserRouter([
@@ -22,9 +23,10 @@ const router = createBrowserRouter([
       { path: "sorg", element: <Sorg /> },
       { path: "minne", element: <Minne /> },
       { path: "bearbetning", element: <Bearbetning /> },
-      { path: "journal", element: <Journal /> },   // ⟵ fixad dagbokslänk
+      { path: "journal", element: <Journal /> },
+      { path: "import-export", element: <ImportExport /> },
       { path: "settings", element: <Settings /> },
-      { path: "*", element: <NotFound /> },        // fångar ogiltiga routes
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
