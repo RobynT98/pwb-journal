@@ -7,7 +7,9 @@ import type { Page, PageKind } from "@/lib/storage";
  * Om du skickar in ett "kind" filtreras listan direkt.
  */
 export function usePages(kind?: PageKind) {
-  const [all, setAll] = useState<Page[]>(() => normalize(loadPages()));
+  // 🛑 FIX: loadPages() returnerar redan en ren, normaliserad array.
+  // Vi tar bort det redundanta anropet till normalize() här.
+  const [all, setAll] = useState<Page[]>(() => loadPages());
 
   // sortera nyast först varje gång listan ändras
   const pages = useMemo(() => {
@@ -26,7 +28,8 @@ export function usePages(kind?: PageKind) {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === "pwb:pages:v1") {
-        setAll(normalize(loadPages()));
+        // 🛑 FIX: Ladda bara om. Datan är redan ren.
+        setAll(loadPages());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -55,6 +58,7 @@ export function usePages(kind?: PageKind) {
               // slå ihop delar som ofta skickas:
               tags: patch.tags ?? p.tags,
               props: patch.props ?? p.props,
+              blocks: patch.blocks ?? p.blocks, // Lade till blocks här också
               privacy: patch.privacy ?? p.privacy,
               updatedAt: new Date().toISOString(),
             }
@@ -99,6 +103,7 @@ export function usePages(kind?: PageKind) {
         title: parsed.title ?? "(importerad)",
         tags: Array.isArray(parsed.tags) ? parsed.tags : [],
         props: parsed.props ?? {},
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [], // Lade till blocks
         privacy:
           parsed.privacy && typeof parsed.privacy === "object"
             ? (parsed.privacy as Page["privacy"])
@@ -116,27 +121,5 @@ export function usePages(kind?: PageKind) {
   return { pages, create, update, remove, exportOne, importOneFromText };
 }
 
-/* ---------------- helpers ---------------- */
-
-// 🛑 FIX: Gör normalize() "skottsäker"
-function normalize(arr: any): Page[] {
-  // Om "arr" inte är en array (t.ex. null eller undefined från tom localStorage),
-  // returnera en tom array direkt för att förhindra krasch.
-  if (!Array.isArray(arr)) {
-    return [];
-  }
-
-  // säkerställ obligatoriska fält
-  return arr
-    .filter(Boolean) // filtrera bort ev. null-poster inuti arrayen
-    .map((p) => ({
-      id: p.id ?? uid("pg"),
-      kind: p.kind,
-      title: p.title ?? null,
-      tags: Array.isArray(p.tags) ? p.tags : [],
-      props: p.props ?? {},
-      privacy: p.privacy ?? { mode: "open" },
-      createdAt: p.createdAt ?? new Date().toISOString(),
-      updatedAt: p.updatedAt ?? p.createdAt ?? new Date().toISOString(),
-    }));
-}
+// 🛑 FIX: Hela den privata "normalize"-funktionen är borttagen härifrån.
+// Den finns (och behövs) bara i storage.ts.
