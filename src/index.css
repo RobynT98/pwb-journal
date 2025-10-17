@@ -151,3 +151,11 @@ body {
   body { background: white !important; }
   .card, .card-paper { box-shadow: none !important; }
 }
+/* ----- no-scrollbar utility ----- */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE och Edge */
+  scrollbar-width: none;     /* Firefox */
+}
