@@ -191,6 +191,35 @@ export default function SettingsPage() {
           Gäller endast lokalt i din webbläsare. Exportera viktiga poster innan.
         </p>
       </section>
+
+      {/* ----------------- NY SEKTION ----------------- */}
+      <section className="card-paper p-4 lift">
+        <h3 className="font-medium mb-2">Stöd & Hjälp</h3>
+        <p className="meta mb-3">
+          Om du mår akut dåligt finns det hjälp att få. Du är inte ensam.
+        </p>
+
+        <div className="font-semibold">Akut livshotande tillstånd</div>
+        <p className="meta mb-3">
+          Ring alltid <strong className="font-bold text-[var(--fg)]">112</strong>.
+        </p>
+
+        <div className="font-semibold">Behöver du någon att prata med?</div>
+        <p className="meta">
+          Självmordslinjen finns via telefon{" "}
+          <strong className="font-bold text-[var(--fg)]">90101</strong> eller chatt.
+        </p>
+        <a
+          href="https://mind.se/hitta-hjalp/sjalvmordslinjen/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm underline hover:opacity-75"
+        >
+          Öppna Mind.se för att chatta
+        </a>
+      </section>
+      {/* ----------------- SLUT NY SEKTION ----------------- */}
+
     </div>
   );
 }
