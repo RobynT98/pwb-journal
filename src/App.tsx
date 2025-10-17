@@ -7,8 +7,11 @@ export default function App() {
     <div className="h-dvh grid grid-cols-[240px_1fr] grid-rows-[56px_1fr] text-stone-800">
       <Topbar className="col-span-2" />
       <Sidebar />
-      <main className="bg-stone-50 border-l border-stone-200 p-6 overflow-y-auto">
-        <Outlet />
+      <main className="paper-texture border-l border-stone-200 p-6 overflow-y-auto">
+        <div className="mx-auto max-w-6xl space-y-6">
+          {/* Här ritas respektive sida in */}
+          <Outlet />
+        </div>
       </main>
     </div>
   );
