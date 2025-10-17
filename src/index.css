@@ -159,3 +159,15 @@ body {
   -ms-overflow-style: none;  /* IE och Edge */
   scrollbar-width: none;     /* Firefox */
 }
+/* Menyknappers item */
+.menu-item {
+  @apply text-left px-3 py-2 rounded-lg hover:bg-stone-100 active:bg-stone-200;
+}
+
+/* Små märken */
+.badge {
+  @apply inline-flex items-center rounded-full border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium;
+}
+
+/* Kort microlyft */
+.lift { box-shadow: 0 1px 0 rgba(0,0,0,.03), 0 8px 30px rgba(0,0,0,.04); }
