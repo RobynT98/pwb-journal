@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Tema-variabler (pastell + varma papperstoner) ---------- */
+:root {
+  --bg:  #faf7f2;      /* varm papperston */
+  --fg:  #2b2b2b;      /* text */
+  --muted: #6b6b6b;    /* sekundär text */
+  --ink: #1f1f1f;      /* mörkare rubriker */
+  --accent: #7a1d1d;   /* mörkröd accent (matchar tailwind.config) */
+
+  --card: #ffffffee;   /* lätt translucens för djup */
+  --ring: var(--accent);
+
+  --shadow-soft: 0 1px 1px rgba(0,0,0,.04), 0 4px 10px rgba(0,0,0,.06);
+  --shadow-lift: 0 6px 18px rgba(0,0,0,.12);
+}
+
+/* ---------- Bas ---------- */
+html, body, #root {
+  height: 100%;
+}
+body {
+  background:
+    radial-gradient(1200px 800px at 20% -10%, rgba(122,29,29,0.05), transparent 60%),
+    radial-gradient(800px 600px at 120% 10%, rgba(122,29,29,0.04), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.9)),
+    var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtil “papper”-textur (CSS only, utan bilder) */
+.paper-texture {
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0, rgba(0,0,0,0.015) 1px, transparent 2px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.012) 0, rgba(0,0,0,0.012) 1px, transparent 3px),
+    var(--card);
+}
+
+/* ---------- Komponent-utilities (använd i Tailwind-klasser) ---------- */
+@layer components {
+  /* Kort med mjuk skugga + papper */
+  .card {
+    @apply rounded-2xl border border-stone-200 bg-white;
+    box-shadow: var(--shadow-soft);
+    background: var(--card);
+  }
+  .card-paper {
+    @apply rounded-2xl border border-stone-200;
+    box-shadow: var(--shadow-soft);
+    background: var(--card);
+    position: relative;
+  }
+  .card-paper::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0 1px, transparent 2px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.012) 0 1px, transparent 3px);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  /* Knappar */
+  .btn {
+    @apply inline-flex items-center justify-center h-10 px-4 rounded-md text-sm transition;
+  }
+  .btn-primary {
+    @apply btn text-white bg-stone-900 hover:bg-stone-800;
+    box-shadow: var(--shadow-soft);
+  }
+  .btn-outline {
+    @apply btn border border-stone-300 hover:bg-stone-50;
+  }
+  .btn-accent {
+    @apply btn text-white;
+    background: var(--accent);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Inputs med vacker fokusring */
+  .input {
+    @apply h-10 w-full rounded-md border border-stone-300 bg-white px-3 text-sm outline-none transition;
+  }
+  .input:focus {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 35%, white);
+    border-color: color-mix(in oklab, var(--ring) 60%, black);
+  }
+  .textarea {
+    @apply w-full rounded-md border border-stone-300 bg-white p-3 text-sm outline-none transition;
+    min-height: 6rem;
+  }
+  .textarea:focus { box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 35%, white); }
+
+  /* Små etiketter */
+  .label { @apply text-sm text-stone-700; }
+
+  /* Subtil avdelare */
+  .divider {
+    @apply border-t;
+    border-color: color-mix(in oklab, #e7e5e4 80%, var(--accent) 20%);
+  }
+
+  /* “Lyft” när man hovrar kort */
+  .lift:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+
+  /* Fokusmarkering för klickbara paneler */
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, white);
+    border-radius: .75rem;
+  }
+
+  /* Pastell-badges för taggar, mood etc */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 h-6 text-xs;
+    background: color-mix(in oklab, var(--accent) 15%, white);
+    color: color-mix(in oklab, var(--accent) 60%, black);
+    border: 1px solid color-mix(in oklab, var(--accent) 25%, #e7e5e4);
+  }
+
+  /* Mindre, “hand-skriven” känsla för meta (kan bytas mot riktig font sen) */
+  .meta {
+    @apply text-[12px] text-stone-500 tracking-wide;
+    letter-spacing: .02em;
+  }
+}
+
+/* ---------- Små animationer (lugna, andande) ---------- */
+@keyframes glow {
+  0%   { box-shadow: 0 0 0 0 rgba(122,29,29,0.20); }
+  50%  { box-shadow: 0 0 0 6px rgba(122,29,29,0.06); }
+  100% { box-shadow: 0 0 0 0 rgba(122,29,29,0.20); }
+}
+.glow {
+  animation: glow 3.6s ease-in-out infinite;
+  border-radius: .75rem;
+}
+
+/* ---------- Print-vänligt (för framtida PDF-export) ---------- */
+@media print {
+  body { background: white !important; }
+  .card, .card-paper { box-shadow: none !important; }
+}
