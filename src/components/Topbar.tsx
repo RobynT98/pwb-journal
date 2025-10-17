@@ -12,17 +12,17 @@ export default function Topbar() {
     { to: "/minne", label: "Minne" },
     { to: "/bearbetning", label: "Bearbetning" },
     { to: "/journal", label: "Dagbok" },
+    { to: "/import-export", label: "Import/Export" }, // ⟵ ny
     { to: "/settings", label: "Inställningar" },
   ];
 
   return (
     <header className="sticky top-0 z-40 bg-[var(--bg)]/80 backdrop-blur border-b border-stone-200">
-      {/* Överrad: titel + desktop-nav */}
+      {/* Desktop-rad */}
       <nav className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
         <div className="flex items-center gap-6">
           <span className="font-semibold text-[var(--ink)] select-none">pwb-journal</span>
 
-          {/* Desktop-nav */}
           <ul className="hidden md:flex items-center gap-4">
             {nav.map((n) => (
               <li key={n.to}>
@@ -41,16 +41,12 @@ export default function Topbar() {
           </ul>
         </div>
 
-        {/* Högersida kan få knappar senare (sök, export etc) */}
         <div className="hidden md:block text-sm text-[var(--muted)]" />
       </nav>
 
-      {/* Mobil/tab-nav (ingen hamburgare) */}
+      {/* Mobil/tab-nav utan hamburgare */}
       <div className="md:hidden border-t border-stone-200">
-        <div
-          className="max-w-6xl mx-auto px-3 py-2 overflow-x-auto no-scrollbar"
-          aria-label="Primär navigering"
-        >
+        <div className="max-w-6xl mx-auto px-3 py-2 overflow-x-auto no-scrollbar" aria-label="Primär navigering">
           <ul className="flex items-center gap-2 min-w-max">
             {nav.map((n) => {
               const active = path === n.to;
