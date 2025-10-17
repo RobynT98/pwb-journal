@@ -1,0 +1,44 @@
+# --- Node / Build ---
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+*.log
+
+# --- IDE ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- System / Temp ---
+*.local
+*.env
+.env.*
+!.env.example
+
+# --- OS-filer ---
+ehthumbs.db
+Icon?
+desktop.ini
+
+# --- App-specifika ---
+data/
+tmp/
+*.bak
+*.old
+*.swp
+*.lock
+
+# --- Test / Coverage ---
+coverage/
+*.lcov
+
+# --- TypeScript ---
+*.tsbuildinfo
+
+# --- Misc ---
+# Ev. egna exports eller backups kan ligga här:
+exports/
+backups/
