@@ -245,4 +245,312 @@ function BlockView({
         <input
           className="w-full text-xl font-semibold bg-transparent outline-none focus-ring p-1 rounded-md"
           value={(block as H1Block).text}
-          onChange={(e) =>
+          onChange={(e) => onChange({ ...(block as H1Block), text: e.target.value })}
+          placeholder="Rubrik…"
+        />
+      )}
+
+      {block.type === "paragraph" && (
+        <textarea
+          className="textarea"
+          value={(block as ParagraphBlock).text}
+          onChange={(e) => onChange({ ...(block as ParagraphBlock), text: e.target.value })}
+          placeholder="Skriv fritt…"
+        />
+      )}
+
+      {block.type === "quote" && (
+        <textarea
+          className="textarea italic"
+          value={(block as QuoteBlock).text}
+          onChange={(e) => onChange({ ...(block as QuoteBlock), text: e.target.value })}
+          placeholder="“Skriv ett citat…”"
+        />
+      )}
+
+      {block.type === "checklist" && (
+        <ChecklistEditor
+          block={block as ChecklistBlock}
+          onChange={onChange}
+        />
+      )}
+
+      {block.type === "divider" && (
+        <div className="divider my-2" />
+      )}
+
+      {block.type === "image" && (
+        <ImageEditor block={block as ImageBlock} onChange={onChange} />
+      )}
+
+      {block.type === "sketch" && (
+        <SketchEditor block={block as SketchBlock} onChange={onChange} />
+      )}
+    </div>
+  );
+}
+
+function Menu({
+  onAddBelow,
+  onRemove,
+}: {
+  onAddBelow: (t: BlockType) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      <button className="btn-outline" onClick={() => onAddBelow("paragraph")} title="Lägg till block under">
+        + Block
+      </button>
+      <button className="btn-outline" onClick={onRemove} title="Ta bort">
+        Ta bort
+      </button>
+    </div>
+  );
+}
+
+/** -----------------------------
+ *  ChecklistEditor
+ *  ----------------------------- */
+function ChecklistEditor({
+  block,
+  onChange,
+}: {
+  block: ChecklistBlock;
+  onChange: (b: Block) => void;
+}) {
+  const toggle = (id: string) =>
+    onChange({
+      ...block,
+      items: block.items.map((i) => (i.id === id ? { ...i, done: !i.done } : i)),
+    });
+
+  const updateText = (id: string, text: string) =>
+    onChange({
+      ...block,
+      items: block.items.map((i) => (i.id === id ? { ...i, text } : i)),
+    });
+
+  const add = () =>
+    onChange({
+      ...block,
+      items: [...block.items, { id: uid(), text: "", done: false }],
+    });
+
+  const remove = (id: string) =>
+    onChange({ ...block, items: block.items.filter((i) => i.id !== id) });
+
+  return (
+    <div className="grid gap-2">
+      {block.items.map((i) => (
+        <label key={i.id} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={i.done}
+            onChange={() => toggle(i.id)}
+          />
+          <input
+            className="input"
+            value={i.text}
+            onChange={(e) => updateText(i.id, e.target.value)}
+            placeholder="Att göra / att minnas…"
+          />
+          <button className="btn-outline" onClick={() => remove(i.id)} title="Ta bort rad">
+            −
+          </button>
+        </label>
+      ))}
+      <div className="flex justify-end">
+        <button className="btn-outline" onClick={add}>+ Rad</button>
+      </div>
+    </div>
+  );
+}
+
+/** -----------------------------
+ *  ImageEditor – enkel bildloader
+ *  ----------------------------- */
+function ImageEditor({
+  block,
+  onChange,
+}: {
+  block: ImageBlock;
+  onChange: (b: Block) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    onChange({ ...block, fileUrl: url });
+  };
+
+  return (
+    <div className="grid gap-3">
+      {!block.fileUrl ? (
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={onPick}
+            className="hidden"
+          />
+          <button className="btn-outline" onClick={() => fileRef.current?.click()}>
+            Välj bild…
+          </button>
+          <span className="meta">Bilden lagras i minnet för nu (ej filsystem ännu).</span>
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          <img
+            src={block.fileUrl}
+            alt={block.caption ?? "bild"}
+            className="rounded-lg border border-stone-200 max-h-96 object-contain"
+          />
+          <input
+            className="input"
+            placeholder="Bildtext (valfri)"
+            value={block.caption ?? ""}
+            onChange={(e) => onChange({ ...block, caption: e.target.value })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** -----------------------------
+ *  SketchEditor – enkel frihandsritning
+ *  ----------------------------- */
+function SketchEditor({
+  block,
+  onChange,
+}: {
+  block: SketchBlock;
+  onChange: (b: Block) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [drawing, setDrawing] = useState<boolean>(false);
+  const [color, setColor] = useState<string>("#1f2937"); // stone-800
+  const [width, setWidth] = useState<number>(3);
+
+  const currentStroke = useRef<Stroke | null>(null);
+
+  const size = useMemo(() => ({ w: 800, h: 400 }), []);
+
+  const redraw = () => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, c.width, c.height);
+    // bakgrund
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
+    // rutnät (lätt, papper)
+    ctx.strokeStyle = "rgba(0,0,0,0.05)";
+    ctx.lineWidth = 1;
+    for (let x = 40; x < c.width; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, c.height); ctx.stroke();
+    }
+    for (let y = 40; y < c.height; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(c.width, y); ctx.stroke();
+    }
+    // strokes
+    for (const s of block.strokes) {
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      s.points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+    }
+    // aktuell stroke
+    if (currentStroke.current) {
+      const s = currentStroke.current;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      s.points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+    }
+  };
+
+  const toPoint = (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const start = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setDrawing(true);
+    const s: Stroke = { color, width, points: [toPoint(e)] };
+    currentStroke.current = s;
+    redraw();
+  };
+
+  const move = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drawing || !currentStroke.current) return;
+    currentStroke.current.points.push(toPoint(e));
+    redraw();
+  };
+
+  const end = () => {
+    setDrawing(false);
+    if (currentStroke.current) {
+      onChange({ ...block, strokes: [...block.strokes, currentStroke.current] });
+      currentStroke.current = null;
+    }
+    redraw();
+  };
+
+  // Redraw när block eller stil ändras
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useMemo(() => { setTimeout(redraw, 0); return null; }, [block.strokes, color, width]);
+
+  const clear = () => onChange({ ...block, strokes: [] });
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="label">Färg</label>
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        <label className="label">Pensel</label>
+        <input
+          type="range"
+          min={1}
+          max={16}
+          value={width}
+          onChange={(e) => setWidth(parseInt(e.target.value))}
+          className="w-40 accent-[var(--accent)]"
+        />
+        <button className="btn-outline" onClick={clear}>Rensa</button>
+        <span className="meta">Enkel frihands-skiss. (Sparas till state.)</span>
+      </div>
+
+      <div className="rounded-lg border border-stone-200 overflow-hidden">
+        <canvas
+          ref={canvasRef}
+          width={size.w}
+          height={size.h}
+          className="block w-full h-auto"
+          onMouseDown={start}
+          onMouseMove={move}
+          onMouseUp={end}
+          onMouseLeave={end}
+        />
+      </div>
+    </div>
+  );
+}
