@@ -118,10 +118,17 @@ export function usePages(kind?: PageKind) {
 
 /* ---------------- helpers ---------------- */
 
-function normalize(arr: Page[]): Page[] {
+// 🛑 FIX: Gör normalize() "skottsäker"
+function normalize(arr: any): Page[] {
+  // Om "arr" inte är en array (t.ex. null eller undefined från tom localStorage),
+  // returnera en tom array direkt för att förhindra krasch.
+  if (!Array.isArray(arr)) {
+    return [];
+  }
+
   // säkerställ obligatoriska fält
   return arr
-    .filter(Boolean)
+    .filter(Boolean) // filtrera bort ev. null-poster inuti arrayen
     .map((p) => ({
       id: p.id ?? uid("pg"),
       kind: p.kind,
