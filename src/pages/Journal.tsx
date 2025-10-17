@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePages } from "@/hooks/usePages";
-import type { Page } from "@/lib/storage";
 
 /** -----------------------------
  *  Blocktyper (för fria editorn)
@@ -28,7 +27,8 @@ type Block =
   | SketchBlock;
 
 /** Hjälp */
-const uid = () => crypto.randomUUID();
+const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
+
 function newBlock(t: BlockType): Block {
   switch (t) {
     case "h1": return { id: uid(), type: "h1", text: "Ny rubrik" };
@@ -46,22 +46,31 @@ function newBlock(t: BlockType): Block {
  *  ============================= */
 export default function Journal() {
   const { pages, create, update, exportOne, importOneFromText } = usePages("journal");
+
+  // vilken sida vi redigerar just nu
   const [currentId, setCurrentId] = useState<string | null>(pages[0]?.id ?? null);
 
-  // Lokal editor-state för vald sida
-  const current = useMemo(() => pages.find(p => p.id === currentId), [pages, currentId]);
+  // om listan ändras och vald id saknas – välj senaste
+  useEffect(() => {
+    if (!currentId || !pages.find(p => p.id === currentId)) {
+      if (pages[0]?.id) setCurrentId(pages[0].id);
+    }
+  }, [pages, currentId]);
+
+  // nuvarande sida + lokalt editorstate
+  const current = useMemo(() => pages.find(p => p.id === currentId) ?? null, [pages, currentId]);
   const [title, setTitle] = useState<string>(current?.title || "Ny sida");
   const [blocks, setBlocks] = useState<Block[]>(
     (current?.blocks as Block[] | undefined) ?? [newBlock("paragraph") as ParagraphBlock]
   );
 
-  // När vi byter sida i listan: ladda in i editorn
+  // ladda in editorstate när vi byter sida
   useEffect(() => {
     setTitle(current?.title || "Ny sida");
     setBlocks((current?.blocks as Block[] | undefined) ?? [newBlock("paragraph") as ParagraphBlock]);
-  }, [currentId, current?.title, current?.blocks]);
+  }, [current?.id]); // endast vid byte av faktisk sida
 
-  // Autospara med debounce
+  // autospara (debounce)
   const saveTimer = useRef<number | null>(null);
   useEffect(() => {
     if (!current) return;
@@ -72,17 +81,17 @@ export default function Journal() {
     return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
   }, [title, blocks, current, update]);
 
-  // Skapa ny sida
+  // skapa ny sida
   function handleNew() {
-    const page = create({
+    const newId = create({
       kind: "journal",
       title: "Ny sida",
       blocks: [newBlock("paragraph")],
     });
-    setCurrentId(page.id);
+    setCurrentId(newId); // create() returnerar id:string i vår hook
   }
 
-  // Ta ut Markdown (snabb export bara för text/citat/checklist/avdelare)
+  // Exportera Markdown (snabb – text/citat/checklist/divider/bild/ skiss-placeholder)
   const exportMarkdown = () => {
     if (!current) return;
     const lines: string[] = [`# ${title}`, ""];
@@ -107,14 +116,17 @@ export default function Journal() {
     URL.revokeObjectURL(a.href);
   };
 
-  // Importera en sida (JSON från tidigare export)
+  // Importera en sida (JSON från appen)
   const fileRef = useRef<HTMLInputElement | null>(null);
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const text = await f.text();
-    const imported = importOneFromText(text);
-    if (imported) setCurrentId(imported.id);
+    const ok = importOneFromText(text); // vår hook returnerar boolean
+    if (ok) {
+      // lista uppdateras → välj nyaste i effecten ovan
+      setCurrentId(null);
+    }
     e.currentTarget.value = "";
   };
 
@@ -149,7 +161,7 @@ export default function Journal() {
           <h2 className="text-2xl font-semibold tracking-tight">Avancerad dagbok</h2>
           <p className="meta">Fri layout med block. Lagring: localStorage (byts till Tauri/FS senare).</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button className="btn-outline" onClick={handleNew}>Ny sida</button>
 
           {/* Import */}
@@ -167,7 +179,9 @@ export default function Journal() {
           {/* Export aktuell som JSON */}
           <button
             className="btn-accent"
-            onClick={() => current && exportOne(current.id, `${(current.title || "journal").replace(/\s+/g, "_").toLowerCase()}.json`)}
+            onClick={() =>
+              current && exportOne(current.id, `${(current.title || "journal").replace(/\s+/g, "_").toLowerCase()}.json`)
+            }
           >
             Exportera sida (JSON)
           </button>
