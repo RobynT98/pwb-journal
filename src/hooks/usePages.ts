@@ -1,42 +1,135 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Kind, Page } from "@/lib/storage";
-import {
-  list as storageList,
-  create as storageCreate,
-  update as storageUpdate,
-  remove as storageRemove,
-  subscribe as storageSubscribe,
-  exportPageJSON,
-  importPageJSON,
-  downloadBlob,
-} from "@/lib/storage";
+import { loadPages, savePages, uid } from "@/lib/storage";
+import type { Page, PageKind } from "@/lib/storage";
 
 /**
- * usePages – React-hook för att läsa/uppdatera sidor ur lagringen.
- * Byter backend enkelt senare (Tauri/SQLite) utan att ändra vyerna.
+ * usePages – hämta och manipulera poster. Allt lokalt i localStorage.
+ * Om du skickar in ett "kind" filtreras listan direkt.
  */
-export function usePages(kind?: Kind) {
-  const [pages, setPages] = useState<Page[]>(() => storageList(kind));
+export function usePages(kind?: PageKind) {
+  const [all, setAll] = useState<Page[]>(() => normalize(loadPages()));
 
+  // sortera nyast först varje gång listan ändras
+  const pages = useMemo(() => {
+    const list = [...all].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    return kind ? list.filter((p) => p.kind === kind) : list;
+  }, [all, kind]);
+
+  // Spara vid förändring
   useEffect(() => {
-    setPages(storageList(kind));
-    const unsub = storageSubscribe(() => setPages(storageList(kind)));
-    return unsub;
-  }, [kind]);
+    savePages(all);
+  }, [all]);
 
-  const api = useMemo(() => {
-    return {
-      create: (partial: Partial<Page> & { kind: Kind }) => storageCreate(partial),
-      update: (id: string, patch: Partial<Page>) => storageUpdate(id, patch),
-      remove: (id: string) => storageRemove(id),
-      exportOne: (id: string, filename?: string) => {
-        const blob = exportPageJSON(id);
-        if (!blob) return;
-        downloadBlob(blob, filename ?? `${id}.json`);
-      },
-      importOneFromText: (jsonText: string) => importPageJSON(jsonText),
+  // Lyssna på andra flikar (defensivt)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === "pwb:pages:v1") {
+        setAll(normalize(loadPages()));
+      }
     };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  return { pages, ...api };
+  function create(p: Omit<Page, "id" | "createdAt" | "updatedAt"> & { id?: string }) {
+    const now = new Date().toISOString();
+    const page: Page = {
+      id: p.id ?? uid("pg"),
+      createdAt: now,
+      updatedAt: now,
+      ...p,
+    };
+    setAll((prev) => [page, ...prev]);
+    return page.id;
+  }
+
+  function update(id: string, patch: Partial<Page>) {
+    setAll((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              ...patch,
+              // slå ihop delar som ofta skickas:
+              tags: patch.tags ?? p.tags,
+              props: patch.props ?? p.props,
+              privacy: patch.privacy ?? p.privacy,
+              updatedAt: new Date().toISOString(),
+            }
+          : p
+      )
+    );
+  }
+
+  function remove(id: string) {
+    setAll((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  // Exportera en post som JSON-fil
+  function exportOne(id: string, filename = "page.json") {
+    const page = all.find((p) => p.id === id);
+    if (!page) return false;
+    const blob = new Blob([JSON.stringify(page, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return true;
+  }
+
+  // Importera en enda post från JSON-text
+  function importOneFromText(text: string) {
+    try {
+      const parsed = JSON.parse(text) as Partial<Page>;
+      if (!parsed || typeof parsed !== "object") return false;
+      // Minimal validering:
+      const id = uid("pg");
+      const now = new Date().toISOString();
+      const page: Page = {
+        id,
+        kind: (parsed.kind as PageKind) ?? "journal",
+        title: parsed.title ?? "(importerad)",
+        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+        props: parsed.props ?? {},
+        privacy:
+          parsed.privacy && typeof parsed.privacy === "object"
+            ? (parsed.privacy as Page["privacy"])
+            : { mode: "open" },
+        createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : now,
+        updatedAt: now,
+      };
+      setAll((prev) => [page, ...prev]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { pages, create, update, remove, exportOne, importOneFromText };
+}
+
+/* ---------------- helpers ---------------- */
+
+function normalize(arr: Page[]): Page[] {
+  // säkerställ obligatoriska fält
+  return arr
+    .filter(Boolean)
+    .map((p) => ({
+      id: p.id ?? uid("pg"),
+      kind: p.kind,
+      title: p.title ?? null,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      props: p.props ?? {},
+      privacy: p.privacy ?? { mode: "open" },
+      createdAt: p.createdAt ?? new Date().toISOString(),
+      updatedAt: p.updatedAt ?? p.createdAt ?? new Date().toISOString(),
+    }));
 }
