@@ -32,9 +32,9 @@ export async function encryptString(
 
   const data = enc.encode(plainText);
   const ct = await subtle().encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer }, // ⟵ iv som ArrayBuffer
     key,
-    data.buffer as ArrayBuffer // explicit ArrayBuffer
+    data.buffer as ArrayBuffer
   );
 
   return {
@@ -60,7 +60,7 @@ export async function decryptString(packet: CryptoPacket, passphrase: string): P
 
   const ct = b64.toBytes(packet.ciphertext);
   const pt = await subtle().decrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer }, // ⟵ iv som ArrayBuffer
     key,
     ct.buffer as ArrayBuffer
   );
@@ -90,7 +90,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array, iterations: numbe
   return subtle().deriveKey(
     {
       name: "PBKDF2",
-      salt: salt.buffer as ArrayBuffer,
+      salt: salt.buffer as ArrayBuffer, // ⟵ salt som ArrayBuffer
       iterations,
       hash: "SHA-256",
     },
