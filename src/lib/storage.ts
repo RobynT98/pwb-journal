@@ -1,4 +1,4 @@
-// Enkel, stabil lagring i localStorage. Används av usePages-hooken.
+// Lokal lagring i localStorage
 
 export type PageKind = "sorg" | "minne" | "bearbetning" | "journal";
 
@@ -8,6 +8,8 @@ export type Page = {
   title?: string | null;
   tags?: string[];
   props?: Record<string, any> | null;
+  /** Fri editor-innehåll – används av Journal */
+  blocks?: any[];
   privacy?: { mode: "open" | "lock" | "ritual-lock"; hint?: string };
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -21,7 +23,7 @@ export function loadPages(): Page[] {
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr as Page[];
+    return normalize(arr as Page[]);
   } catch {
     return [];
   }
@@ -35,8 +37,26 @@ export function clearAll() {
   localStorage.removeItem(STORE_KEY);
 }
 
-export function uid(prefix = "p") {
+export function uid(prefix = "pg") {
   return `${prefix}_${Date.now().toString(36)}_${Math.random()
     .toString(36)
     .slice(2, 8)}`;
+}
+
+/* ---------------- helpers ---------------- */
+
+function normalize(arr: Page[]): Page[] {
+  return arr
+    .filter(Boolean)
+    .map((p) => ({
+      id: p.id ?? uid(),
+      kind: p.kind,
+      title: p.title ?? null,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      props: p.props ?? {},
+      blocks: Array.isArray(p.blocks) ? p.blocks : [],
+      privacy: p.privacy ?? { mode: "open" },
+      createdAt: p.createdAt ?? new Date().toISOString(),
+      updatedAt: p.updatedAt ?? p.createdAt ?? new Date().toISOString(),
+    }));
 }
